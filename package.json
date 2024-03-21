@@ -1,0 +1,17 @@
+{
+  "name": "node-function-app-for-food-api",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet...\""
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "bcrypt": "^5.1.1",
+    "email-validator": "^2.0.4",
+    "mongodb": "^6.5.0",
+    "mongoose": "^8.2.2"
+  },
+  "main": "src/functions/*.js"
+}
