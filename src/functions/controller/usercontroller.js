@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { sendMail } = require("../utitility/nodeMailer.js");
+const { sendMail } = require("../utility/nodeMailer.js");
 const usermodel = require("../modals/usermodal");
 const jwt = require('jsonwebtoken');
 const {JWT_KEY} = require("../secrets")
@@ -222,7 +222,11 @@ module.exports.resetpwd = async function resetpwd(request, context) {
 
 module.exports.forgetpassword = async function forgetpassword(request, context) {
   const email=request.query.get("email")
-  console.log(email)
+  console.log(email) 
+  const arr=request.url.split("/")  
+  console.log(arr)
+  // return
+
 
   try {
     const user = await usermodel.findOne({ email });
@@ -232,7 +236,7 @@ module.exports.forgetpassword = async function forgetpassword(request, context) 
     } else {
       const resetToken = user.createResetToken();
       console.log(resetToken);
-      let resetPasswordLink = `${request.protocol}://${request.hostname}:${request.socket.localPort}/user/resetpassword/${resetToken}`;
+      let resetPasswordLink = `${arr[0]}//${arr[2]}/${arr[3]}/updatepassword?token=${resetToken}`;
       let obj = {
         resetPasswordLink: resetPasswordLink,
         email: email,
