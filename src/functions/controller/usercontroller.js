@@ -1,42 +1,39 @@
 const bcrypt = require("bcrypt");
 const { sendMail } = require("../utility/nodeMailer.js");
 const usermodel = require("../modals/usermodal");
-const jwt = require('jsonwebtoken');
-const {JWT_KEY} = require("../secrets")
-function protectroute(req, res, next) {
-    if (req.cookies.Loggedin) {
-        // var decoded = jwt.verify(req.cookies.Loggedin, JWT_KEY);
-        jwt.verify(req.cookies.Loggedin, JWT_KEY, function (err, decoded) {
-            if (err) {
-                return res.redirect("/user/login")
-            }
-            else {
-                // console.log(decoded) // bar
-                next();
-            }
-
-        });
-
-
-    }
-    else {
-        return res.redirect("/user/login")
-    }
-}
+const jwt = require("jsonwebtoken");
+const { JWT_KEY } = require("../secrets");
+// function protectroute(req, res, next) {
+//   if (req.cookies.Loggedin) {
+//     // var decoded = jwt.verify(req.cookies.Loggedin, JWT_KEY);
+//     jwt.verify(req.cookies.Loggedin, JWT_KEY, function (err, decoded) {
+//       if (err) {
+//         return res.redirect("/user/login");
+//       } else {
+//         // console.log(decoded) // bar
+//         next();
+//       }
+//     });
+//   } else {
+//     return res.redirect("/user/login");
+//   }
+// }
 
 //done
 
-
 //done
-module.exports.getuserProfile = async function getuserProfile(request, context) {
+module.exports.getuserProfile = async function getuserProfile(
+  request,
+  context
+) {
   // fetch user from mongo db
   let data = await request.json();
   console.log("mydata is", data);
   let email = data.email;
-  let user = await usermodel.findOne({email:email});
+  let user = await usermodel.findOne({ email: email });
   // console.log(user)
   if (user) {
-    return { status: 200, jsonBody: {"message":user} };
+    return { status: 200, jsonBody: { message: user } };
   } else {
     return {
       status: 404,
@@ -64,11 +61,10 @@ module.exports.getAllusers = async function getAllusers(request, context) {
 module.exports.updateuser = async function updateuser(request, context) {
   let data = await request.json();
   console.log("mydata is", data);
-  const email=request.query.get("email")
+  const email = request.query.get("email");
   // return
   try {
-    
-    let user = await usermodel.findOne({email:email});
+    let user = await usermodel.findOne({ email: email });
     let datatobeupdated = data;
     if (user) {
       const keys = [];
@@ -83,10 +79,11 @@ module.exports.updateuser = async function updateuser(request, context) {
       const updateddoc = await user.save();
       return {
         status: 200,
-        jsonBody: { message: "user Updated Successfully", "updateddata": updateddoc },
+        jsonBody: {
+          message: "user Updated Successfully",
+          updateddata: updateddoc,
+        },
       };
-     
-    
     } else {
       return {
         status: 404,
@@ -111,19 +108,19 @@ module.exports.deleteuser = async function deleteuser(req, context) {
     if (user)
       return {
         status: 200,
-        jsonBody: { message: "user Deleted Successfully", "userdata": user },
+        jsonBody: { message: "user Deleted Successfully", userdata: user },
       };
     else {
-        return {
-            status: 404,
-            jsonBody: { message: "user Not found" },
-          };
+      return {
+        status: 404,
+        jsonBody: { message: "user Not found" },
+      };
     }
   } catch (err) {
     return {
-        status: 404,
-        jsonBody: { message: "Delete Failed", "message": err },
-      };
+      status: 404,
+      jsonBody: { message: "Delete Failed", message: err },
+    };
   }
 };
 //done
@@ -188,45 +185,56 @@ module.exports.Login = async function Login(req, context) {
 module.exports.resetpwd = async function resetpwd(request, context) {
   let data = await request.json();
   console.log("mydata is", data);
-  const token=request.query.get("token")
-  console.log(token)
+  const token = request.query.get("token");
+  console.log(token);
   // return
   try {
-   
     // console.log(token)
-    let { password, confirmPassword } = data;
-    if(password !=confirmPassword)
-    return { status: 404, jsonBody: { message: "password doesnt match" } };
-
-    jwt.verify(token, JWT_KEY, async function (err, decoded) {
-      if (err) {
-        return { status: 400, jsonBody: { message: "Token expired" } };
-      } else {
-        console.log(decoded)
-        const user = await usermodel.findOne({ resetToken: token });
-        if (user == null) {
-          return { status: 404, jsonBody: { message: "Invalid Token" } };
-        }
-        // console.log(user);
-        user.password = password;
-        user.resetToken = "";
-        const updatedpassworddoc = await user.save();
-        // console.log(updatedpassworddoc)
-        return { status: 200, jsonBody: { message: "Invalid Login/Password" ,"user":updatedpassworddoc} };
+    let password = data.password;
+    let confirmPassword = data.confirmPassword;
+    if (password !== confirmPassword)
+      return { status: 404, jsonBody: { message: "password doesnt match" } };
+    else
+    {
+      console.log("here")
+      const decoded=jwt.verify(token, JWT_KEY);
+     
+      
+         
+      
+          console.log(decoded);
+          const user = await usermodel.findOne({ resetToken: token });
+          if (user == null) {
+            return { status: 404, jsonBody: { message: "Invalid Token" } };
+          }
+          
+          user.password = password;
+          user.resetToken = "";
+          const updatedpassworddoc = await user.save();
+       
+          return {
+            status: 200,
+            jsonBody: {
+              message: "Password Updated",
+              user: updatedpassworddoc,
+            },
+          };
       }
-    });
+      
   } catch (err) {
-    return { status: 505, jsonBody: { message: "Server error" ,"error":err} };
+    return { status: 505, jsonBody: { message: "Server error", error: err } };
   }
 };
 
-module.exports.forgetpassword = async function forgetpassword(request, context) {
-  const email=request.query.get("email")
-  console.log(email) 
-  const arr=request.url.split("/")  
-  console.log(arr)
+module.exports.forgetpassword = async function forgetpassword(
+  request,
+  context
+) {
+  const email = request.query.get("email");
+  console.log(email);
+  const arr = request.url.split("/");
+  console.log(arr);
   // return
-
 
   try {
     const user = await usermodel.findOne({ email });
@@ -241,9 +249,12 @@ module.exports.forgetpassword = async function forgetpassword(request, context) 
         resetPasswordLink: resetPasswordLink,
         email: email,
       };
-     
+
       sendMail("resetpassword", obj);
-      return { status: 200, jsonBody: { message: "Mail has been sent to the registered mail" } };
+      return {
+        status: 200,
+        jsonBody: { message: "Mail has been sent to the registered mail" },
+      };
     }
   } catch (err) {
     return { status: 500, jsonBody: { message: "Internal Error" } };
