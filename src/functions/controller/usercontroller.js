@@ -1,39 +1,47 @@
 const bcrypt = require("bcrypt");
+const { sendMail } = require("../utitility/nodeMailer.js");
 const usermodel = require("../modals/usermodal");
-module.exports.setcookies = function setcookies(req, res) {
-  // res.setHeader("set-cookie", "isLoggedin=false")
-  res.cookie("isLoggedin", false, {
-    maxAge: 1000 * 60,
-    secure: true,
-    httpOnly: true,
-  }); // httponly to prevent acess from frontend
-  res.send("cookie has been set");
-};
-module.exports.getcookies = function getcookies(req, res) {
-  let cookies = req.cookies;
-  console.log(cookies);
-  res.send("cookies received");
-};
-//done
-module.exports.postuser = function postuser(request, context) {
-  console.log(request);
-  users = req.body;
-  res.json({
-    message: "data recieved",
-    user: req.body,
-  });
-};
+const jwt = require('jsonwebtoken');
+const {JWT_KEY} = require("../secrets")
+function protectroute(req, res, next) {
+    if (req.cookies.Loggedin) {
+        // var decoded = jwt.verify(req.cookies.Loggedin, JWT_KEY);
+        jwt.verify(req.cookies.Loggedin, JWT_KEY, function (err, decoded) {
+            if (err) {
+                return res.redirect("/user/login")
+            }
+            else {
+                // console.log(decoded) // bar
+                next();
+            }
+
+        });
+
+
+    }
+    else {
+        return res.redirect("/user/login")
+    }
+}
 
 //done
-module.exports.getuserProfile = async function getuserProfile(req, res) {
+
+
+//done
+module.exports.getuserProfile = async function getuserProfile(request, context) {
   // fetch user from mongo db
-  let uid = req.id;
-  let user = await usermodel.findById(uid);
+  let data = await request.json();
+  console.log("mydata is", data);
+  let email = data.email;
+  let user = await usermodel.findOne({email:email});
   // console.log(user)
   if (user) {
-    res.json({ message: "user data found", data: user });
+    return { status: 200, jsonBody: {"message":user} };
   } else {
-    res.status(403).json({ message: "user not found" });
+    return {
+      status: 404,
+      jsonBody: { message: "user Not found" },
+    };
   }
 };
 
@@ -53,14 +61,15 @@ module.exports.getAllusers = async function getAllusers(request, context) {
   }
 };
 //done
-module.exports.updateuser = async function updateuser(req, res) {
-  // console.log('req body data', req.body);
-  //update data in users object
+module.exports.updateuser = async function updateuser(request, context) {
+  let data = await request.json();
+  console.log("mydata is", data);
+  const email=request.query.get("email")
+  // return
   try {
-    let uid = req.params.id;
-    // console.log(uid);
-    let user = await usermodel.findById(uid);
-    let datatobeupdated = req.body;
+    
+    let user = await usermodel.findOne({email:email});
+    let datatobeupdated = data;
     if (user) {
       const keys = [];
       for (let key in datatobeupdated) {
@@ -72,20 +81,23 @@ module.exports.updateuser = async function updateuser(req, res) {
       }
 
       const updateddoc = await user.save();
-      res.json({
-        message: "user updated",
-        user: updateddoc,
-      });
-      // res.redirect("/user/login")
+      return {
+        status: 200,
+        jsonBody: { message: "user Updated Successfully", "updateddata": updateddoc },
+      };
+     
+    
     } else {
-      res.json({
-        message: "user not found",
-      });
+      return {
+        status: 404,
+        jsonBody: { message: "user Not found" },
+      };
     }
   } catch (err) {
-    res.json({
-      message: err,
-    });
+    return {
+      status: 500,
+      jsonBody: { message: err },
+    };
   }
   // let user = await usermodel.findOneAndUpdate({ id:uid }, req.body)
 };
@@ -94,8 +106,8 @@ module.exports.deleteuser = async function deleteuser(req, context) {
   let data = await req.json();
   console.log("mydata is", data);
   try {
-    let uid = data.id;
-    let user = await usermodel.findOneAndDelete({ _id: uid });
+    let email = data.email;
+    let user = await usermodel.findOneAndDelete({ email: email });
     if (user)
       return {
         status: 200,
@@ -167,6 +179,67 @@ module.exports.Login = async function Login(req, context) {
       }
     } else {
       return { status: 404, jsonBody: { message: "Invalid Login/Password" } };
+    }
+  } catch (err) {
+    return { status: 500, jsonBody: { message: "Internal Error" } };
+  }
+};
+
+module.exports.resetpwd = async function resetpwd(request, context) {
+  let data = await request.json();
+  console.log("mydata is", data);
+  const token=request.query.get("token")
+  console.log(token)
+  // return
+  try {
+   
+    // console.log(token)
+    let { password, confirmPassword } = data;
+    if(password !=confirmPassword)
+    return { status: 404, jsonBody: { message: "password doesnt match" } };
+
+    jwt.verify(token, JWT_KEY, async function (err, decoded) {
+      if (err) {
+        return { status: 400, jsonBody: { message: "Token expired" } };
+      } else {
+        console.log(decoded)
+        const user = await usermodel.findOne({ resetToken: token });
+        if (user == null) {
+          return { status: 404, jsonBody: { message: "Invalid Token" } };
+        }
+        // console.log(user);
+        user.password = password;
+        user.resetToken = "";
+        const updatedpassworddoc = await user.save();
+        // console.log(updatedpassworddoc)
+        return { status: 200, jsonBody: { message: "Invalid Login/Password" ,"user":updatedpassworddoc} };
+      }
+    });
+  } catch (err) {
+    return { status: 505, jsonBody: { message: "Server error" ,"error":err} };
+  }
+};
+
+module.exports.forgetpassword = async function forgetpassword(request, context) {
+  const email=request.query.get("email")
+  console.log(email)
+
+  try {
+    const user = await usermodel.findOne({ email });
+
+    if (user === null) {
+      return { status: 404, jsonBody: { message: "Email ID not found" } };
+    } else {
+      const resetToken = user.createResetToken();
+      console.log(resetToken);
+      let resetPasswordLink = `${request.protocol}://${request.hostname}:${request.socket.localPort}/user/resetpassword/${resetToken}`;
+      let obj = {
+        resetPasswordLink: resetPasswordLink,
+        email: email,
+      };
+     
+      sendMail("resetpassword", obj);
+      return { status: 200, jsonBody: { message: "Mail has been sent to the registered mail" } };
     }
   } catch (err) {
     return { status: 500, jsonBody: { message: "Internal Error" } };

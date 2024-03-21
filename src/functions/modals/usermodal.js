@@ -1,10 +1,8 @@
 const mongoose = require("mongoose");
 const emailval = require("email-validator");
 const bcrypt = require("bcrypt")
-// const jwt = require('jsonwebtoken');
-
-// const { JWT_KEY } = require("../secrets.js")
-
+const jwt = require('jsonwebtoken');
+const { JWT_KEY } = require("../secrets.js")
 mongoose.connect("mongodb+srv://joban:yzSJge5kJQHr4mw5@cloudcluster.qvkdum5.mongodb.net/?retryWrites=true&w=majority").then(function (db) {
     console.log("db connected");
     // console.log(db);
@@ -73,15 +71,14 @@ userSchema.pre('save', function (next) { // pre hook encrypts the password
     });
 });
 //reset token
-// userSchema.methods.createResetToken = function () {
-//     //use crypto package npm
-//     console.log("hello")
-//     let token = jwt.sign({ payload: this.email }, JWT_KEY, { expiresIn: 5 * 60 });
-//     this.resetToken = token
-//     this.save();
-//     return this.resetToken;
-// }
-
+userSchema.methods.createResetToken = function () {
+    
+    console.log("creating token")
+    let token = jwt.sign({ payload: this.email }, JWT_KEY, { expiresIn: 5 * 60 });
+    this.resetToken = token
+    this.save();
+    return this.resetToken;
+}
 
 
 //model
