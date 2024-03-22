@@ -1,6 +1,7 @@
 const { app } = require('@azure/functions');
 const { getAllusers, Signup, Login, deleteuser, getuserProfile, updateuser, resetpwd, forgetpassword } = require('./controller/usercontroller');
 
+
 app.http('getAllusers', {
     route:"users",
     methods: ['GET'],
